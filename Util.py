@@ -3,20 +3,11 @@ import shutil
 from xml.etree import ElementTree as ET
 
 
-def signApk(temp_unsign_apk_dir, unsign_apk_file_name, out_sign_file_dir, keystore_path, keystore_pwd, keystore_alias_name):
-    # unsignedjar = r'./bin/%s_%s_unsigned.apk' % (easyName, value)
-    # signed_unalignedjar = r'./bin/%s_%s_signed_unaligned.apk' % (easyName, value)
-    # signed_alignedjar = r'./bin/%s_%s.apk' % (easyName, value)
-    # cmd_sign = r'jarsigner -verbose -keystore %s -storepass %s -signedjar %s %s %s' % (
-    # keystore, storepass, signed_unalignedjar, unsignedjar, alianame)
-    # cmd_align = r'zipalign -v 4 %s %s' % (signed_unalignedjar, signed_alignedjar)
-    # os.system(cmd_sign)
-    # os.remove(unsignedjar)
-    # os.system(cmd_align)
-    # os.remove(signed_unalignedjar)
+def signApk(temp_unsign_apk_dir, unsign_apk_file_name, out_sign_file_dir, keystore_path, keystore_pwd,
+            keystore_alias_name):
     unsign_file_name_list = os.path.splitext(unsign_apk_file_name)
-    v1_sign_apk_path = temp_unsign_apk_dir+"/"+unsign_file_name_list[0]+"_v1sign"+unsign_file_name_list[1]
-    unsign_apk_path = temp_unsign_apk_dir+"/"+unsign_apk_file_name
+    v1_sign_apk_path = temp_unsign_apk_dir + "/" + unsign_file_name_list[0] + "_v1sign" + unsign_file_name_list[1]
+    unsign_apk_path = temp_unsign_apk_dir + "/" + unsign_apk_file_name
     # V1签名
     sign_v1_cmd = r'jarsigner -verbose -keystore %s -storepass %s -signedjar %s %s %s' % (
         keystore_path, keystore_pwd, v1_sign_apk_path, unsign_apk_path, keystore_alias_name)
@@ -27,8 +18,8 @@ def signApk(temp_unsign_apk_dir, unsign_apk_file_name, out_sign_file_dir, keysto
     if not os.path.exists(out_sign_file_dir):
         os.makedirs(out_sign_file_dir)
 
-    v1_sign_zip_apk_path = out_sign_file_dir+"/"+unsign_file_name_list[0]+"_sign_zip"+unsign_file_name_list[1]
-    zip_align_cmd = r'zipalign -v 4 %s %s' % (v1_sign_apk_path,v1_sign_zip_apk_path)
+    v1_sign_zip_apk_path = out_sign_file_dir + "/" + unsign_file_name_list[0] + "_sign_zip" + unsign_file_name_list[1]
+    zip_align_cmd = r'zipalign -v 4 %s %s' % (v1_sign_apk_path, v1_sign_zip_apk_path)
     os.system(zip_align_cmd)
     # v2签名
     sign_v2_cmd = 'apksigner sign --ks %s --ks-pass pass:%s --ks-key-alias %s %s' % (
@@ -73,10 +64,10 @@ def modifyChannel(channel, back_up_manifest_file_path, temp_manifest_path, unzip
                 metaDataNode.set(val, channel)
     tree.write(temp_manifest_path, 'UTF-8')
     file_name_list = os.path.splitext(os.path.basename(apk_file))
-    #temp/test_legu_lxh/
+    # temp/test_legu_lxh/
     temp_unsign_apk_dir = temp_dir + "/" + file_name_list[0]
 
-    unsign_apk_file_name = file_name_list[0] + "_"+channel+"_unsigned" + file_name_list[1]
+    unsign_apk_file_name = file_name_list[0] + "_" + channel + "_unsigned" + file_name_list[1]
     # 生成未签名的apk
     unsign_apk_file_path = temp_unsign_apk_dir + "/" + unsign_apk_file_name
     print("生成未签名apk:" + unsign_apk_file_path)
@@ -84,13 +75,14 @@ def modifyChannel(channel, back_up_manifest_file_path, temp_manifest_path, unzip
         "./framework", unzip_temp_dir, unsign_apk_file_path)
     os.system(apk_tool_unsign_apk_cmd)
     # 签名
-    signApk(temp_unsign_apk_dir, unsign_apk_file_name, out_sign_file_dir, keystore_path, keystore_pwd, keystore_alias_name)
+    signApk(temp_unsign_apk_dir, unsign_apk_file_name, out_sign_file_dir, keystore_path, keystore_pwd,
+            keystore_alias_name)
 
 
 def channelApk(apk_file, channel_list, out_sign_file_dir, keystore_path, keystore_pwd, keystore_alias_name):
     print("开始多渠道打包，原Apk路径为：" + apk_file)
     apk_dir = os.path.dirname(apk_file)
-    temp_dir = apk_dir + "/temp"
+    temp_dir = "./temp"
     if os.path.exists(temp_dir):
         shutil.rmtree(temp_dir)
     os.makedirs(temp_dir)
@@ -116,9 +108,27 @@ def channelApk(apk_file, channel_list, out_sign_file_dir, keystore_path, keystor
     # 去执行每一个
     for channel in channel_list:
         modifyChannel(channel, back_up_manifest_file_path, temp_manifest_path, unzip_temp_dir, temp_dir, apk_file,
-                  out_sign_file_dir, keystore_path, keystore_pwd, keystore_alias_name)
+                      out_sign_file_dir, keystore_path, keystore_pwd, keystore_alias_name)
 
     print("success")
 
 
+keystore_file_path = "./keystore_config.txt"
 
+
+def saveKeyStore(keystore_path, keystore_pass, keystore_alias):
+    oldPath, oldPass, oldAlias = readKeyStore()
+    newCon = keystore_path+"\n"+keystore_pass+"\n"+keystore_alias
+    oldCon = oldPath+"\n"+oldPass+"\n"+oldAlias
+    if oldCon == newCon:
+        return
+    if os.path.exists(keystore_file_path):
+        os.remove(keystore_file_path)
+    fi = open(keystore_file_path, "w", encoding="utf-8")
+    fi.write(newCon)
+
+def readKeyStore():
+    fi = open(keystore_file_path, "r", encoding="utf-8")
+    cont = fi.read()
+    cont_list = cont.split("\n")
+    return cont_list[0], cont_list[1], cont_list[2]
