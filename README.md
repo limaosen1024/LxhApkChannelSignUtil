@@ -1,0 +1,2 @@
+# LxhApkChannelSignUtil
+apk多渠道和签名的脚本工具
