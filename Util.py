@@ -4,10 +4,21 @@ import shutil
 from xml.etree import ElementTree as ET
 
 cmd_res = 0
+apk_tool_path = os.path.abspath("./script/apktool_2.4.0.jar");
+zip_align_tool_path = os.path.abspath("./script/buidl-tools-29.0.1/zipalign")
+apksigner_align_tool_path = os.path.abspath("./script/buidl-tools-29.0.1/apksigner")
+
+
+def renameFile(file_path, channel):
+    file_name_list = os.path.splitext(os.path.basename(file_path))
+    new_file_name = (file_name_list[0].split("_"))[0] + "_" + channel + file_name_list[1]
+    file_dir = os.path.dirname(file_path)
+    new_file_path = file_dir + "/" + new_file_name
+    os.rename(file_path, new_file_path)
 
 
 def signApk(temp_unsign_apk_dir, unsign_apk_file_name, out_sign_file_dir, keystore_path, keystore_pwd,
-            keystore_alias_name):
+            keystore_alias_name, channel):
     unsign_file_name_list = os.path.splitext(unsign_apk_file_name)
     v1_sign_apk_path = temp_unsign_apk_dir + "/" + unsign_file_name_list[0] + "_v1sign" + unsign_file_name_list[1]
     unsign_apk_path = temp_unsign_apk_dir + "/" + unsign_apk_file_name
@@ -27,18 +38,24 @@ def signApk(temp_unsign_apk_dir, unsign_apk_file_name, out_sign_file_dir, keysto
         os.makedirs(out_sign_file_dir)
 
     v1_sign_zip_apk_path = out_sign_file_dir + "/" + unsign_file_name_list[0] + "_sign_zip" + unsign_file_name_list[1]
-    zip_align_cmd = r'zipalign -v 4 %s %s' % (v1_sign_apk_path, v1_sign_zip_apk_path)
+    zip_align_cmd = r'%s -v 4 %s %s' % (zip_align_tool_path, v1_sign_apk_path, v1_sign_zip_apk_path)
     cmd_res = os.system(zip_align_cmd)
     if (cmd_res != 0):
         sys.exit(0)
     print("zipalign成功：" + v1_sign_zip_apk_path)
     # v2签名
-    sign_v2_cmd = 'apksigner sign --ks %s --ks-pass pass:%s --ks-key-alias %s %s' % (
-        keystore_path, keystore_pwd, keystore_alias_name, v1_sign_zip_apk_path)
+    sign_v2_cmd = '%s sign --ks %s --ks-pass pass:%s --ks-key-alias %s %s' % (apksigner_align_tool_path,
+                                                                              keystore_path, keystore_pwd,
+                                                                              keystore_alias_name, v1_sign_zip_apk_path)
     cmd_res = os.system(sign_v2_cmd)
     if (cmd_res != 0):
         sys.exit(0)
+    check_v2_sign_cmd = r'apksigner verify -v --print-certs %s' % (v1_sign_zip_apk_path)
+    cmd_res = os.system(check_v2_sign_cmd)
+    if (cmd_res != 0):
+        sys.exit(0)
     print("v2签名成功：" + v1_sign_zip_apk_path)
+    renameFile(v1_sign_zip_apk_path, channel)
 
 
 # 备份manifest文件
@@ -84,15 +101,15 @@ def modifyChannel(channel, back_up_manifest_file_path, temp_manifest_path, unzip
     unsign_apk_file_name = file_name_list[0] + "_" + channel + "_unsigned" + file_name_list[1]
     # 生成未签名的apk
     unsign_apk_file_path = temp_unsign_apk_dir + "/" + unsign_apk_file_name
-    apk_tool_unsign_apk_cmd = r'java -jar apktool_2.4.0.jar -p %s b %s -o %s' % (
-        "./framework", unzip_temp_dir, unsign_apk_file_path)
+    apk_tool_unsign_apk_cmd = r'java -jar %s -p %s b %s -o %s' % (apk_tool_path,
+                                                                  "./framework", unzip_temp_dir, unsign_apk_file_path)
     cmd_res = os.system(apk_tool_unsign_apk_cmd)
     if (cmd_res != 0):
         sys.exit(0)
     print("生成未签名apk:" + unsign_apk_file_path)
     # 签名
     signApk(temp_unsign_apk_dir, unsign_apk_file_name, out_sign_file_dir, keystore_path, keystore_pwd,
-            keystore_alias_name)
+            keystore_alias_name, channel)
 
 
 def channelApk(apk_file, channel_list, temp_dir, out_sign_file_dir, keystore_path, keystore_pwd, keystore_alias_name):
@@ -105,10 +122,9 @@ def channelApk(apk_file, channel_list, temp_dir, out_sign_file_dir, keystore_pat
     # 创建临时目录
     os.makedirs(unzip_temp_dir)
     print("apk解压目录为：" + unzip_temp_dir)
-
     # apktool解压apk
-    apk_tool_unzip_cmd = r'java -jar apktool_2.4.0.jar -p %s d -f -s %s  -o %s' % (
-        "./framework", apk_file, unzip_temp_dir)
+    apk_tool_unzip_cmd = r'java -jar %s -p %s d -f -s %s  -o %s' % (apk_tool_path,
+                                                                    "./framework", apk_file, unzip_temp_dir)
     cmd_res = os.system(apk_tool_unzip_cmd)
     if (cmd_res != 0):
         sys.exit(0)
@@ -124,7 +140,6 @@ def channelApk(apk_file, channel_list, temp_dir, out_sign_file_dir, keystore_pat
     for channel in channel_list:
         modifyChannel(channel, back_up_manifest_file_path, temp_manifest_path, unzip_temp_dir, temp_dir, apk_file,
                       out_sign_file_dir, keystore_path, keystore_pwd, keystore_alias_name)
-
 
 
 keystore_config_file_path = "./keystore_config.txt"
@@ -175,3 +190,6 @@ def start(apk_file, channel_list, out_sign_file_dir, keystore_path, keystore_pwd
 
     if run_res == 1:
         print("成功")
+
+
+print(os.path.abspath("./script/apktool_2.4.0.jar"))
