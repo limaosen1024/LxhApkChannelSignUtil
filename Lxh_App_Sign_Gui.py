@@ -90,7 +90,8 @@ def clickSubmit():
     print("channel_list：" + "".join(channel_list))
     if (save_keystore.get() == 1):
         saveKeyStore(keystore_file_path, keystore_pwd, keystore_alias)
-    # channelApk(oldApkPath, channel_list, outPutDir, signFilePath, signPwdR, signAliasName)
+
+    start(old_apk_path, channel_list, out_put_dir, keystore_file_path, keystore_pwd, keystore_alias)
 
 
 Button(myWin, text="确定", command=clickSubmit).grid(row=7, column=0)

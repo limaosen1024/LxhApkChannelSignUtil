@@ -1,6 +1,9 @@
 import os
+import sys
 import shutil
 from xml.etree import ElementTree as ET
+
+cmd_res = 0
 
 
 def signApk(temp_unsign_apk_dir, unsign_apk_file_name, out_sign_file_dir, keystore_path, keystore_pwd,
@@ -11,23 +14,31 @@ def signApk(temp_unsign_apk_dir, unsign_apk_file_name, out_sign_file_dir, keysto
     # V1签名
     sign_v1_cmd = r'jarsigner -verbose -keystore %s -storepass %s -signedjar %s %s %s' % (
         keystore_path, keystore_pwd, v1_sign_apk_path, unsign_apk_path, keystore_alias_name)
-    os.system(sign_v1_cmd)
+    cmd_res = os.system(sign_v1_cmd)
+    if (cmd_res != 0):
+        sys.exit(0)
     check_v1_sign_cmd = r'jarsigner -verify -verbose %s' % (v1_sign_apk_path)
-    os.system(check_v1_sign_cmd)
-    print("V1签名成功："+v1_sign_apk_path)
+    cmd_res = os.system(check_v1_sign_cmd)
+    if (cmd_res != 0):
+        sys.exit(0)
+    print("V1签名成功：" + v1_sign_apk_path)
     # zipalign
     if not os.path.exists(out_sign_file_dir):
         os.makedirs(out_sign_file_dir)
 
     v1_sign_zip_apk_path = out_sign_file_dir + "/" + unsign_file_name_list[0] + "_sign_zip" + unsign_file_name_list[1]
     zip_align_cmd = r'zipalign -v 4 %s %s' % (v1_sign_apk_path, v1_sign_zip_apk_path)
-    os.system(zip_align_cmd)
-    print("zipalign成功："+v1_sign_zip_apk_path)
+    cmd_res = os.system(zip_align_cmd)
+    if (cmd_res != 0):
+        sys.exit(0)
+    print("zipalign成功：" + v1_sign_zip_apk_path)
     # v2签名
     sign_v2_cmd = 'apksigner sign --ks %s --ks-pass pass:%s --ks-key-alias %s %s' % (
         keystore_path, keystore_pwd, keystore_alias_name, v1_sign_zip_apk_path)
-    os.system(sign_v2_cmd)
-    print("v2签名成功："+v1_sign_zip_apk_path)
+    cmd_res = os.system(sign_v2_cmd)
+    if (cmd_res != 0):
+        sys.exit(0)
+    print("v2签名成功：" + v1_sign_zip_apk_path)
 
 
 # 备份manifest文件
@@ -48,7 +59,7 @@ def backUpManifest(back_manifest_dir, temp_manifest_path):
 def modifyChannel(channel, back_up_manifest_file_path, temp_manifest_path, unzip_temp_dir, temp_dir, apk_file,
                   out_sign_file_dir, keystore_path, keystore_pwd, keystore_alias_name):
     android_ns = 'http://schemas.android.com/apk/res/android'
-    print("修改的渠道为："+channel)
+    print("修改的渠道为：" + channel)
     # 替换channel value
     ET.register_namespace('android', android_ns)
     tree = ET.parse(back_up_manifest_file_path)
@@ -66,30 +77,25 @@ def modifyChannel(channel, back_up_manifest_file_path, temp_manifest_path, unzip
             if key_name == 'UMENG_CHANNEL':
                 metaDataNode.set(val, channel)
     tree.write(temp_manifest_path, 'UTF-8')
+    print("修改manifest文件成功:" + temp_manifest_path)
     file_name_list = os.path.splitext(os.path.basename(apk_file))
     # temp/test_legu_lxh/
     temp_unsign_apk_dir = temp_dir + "/" + file_name_list[0]
-
     unsign_apk_file_name = file_name_list[0] + "_" + channel + "_unsigned" + file_name_list[1]
     # 生成未签名的apk
     unsign_apk_file_path = temp_unsign_apk_dir + "/" + unsign_apk_file_name
     apk_tool_unsign_apk_cmd = r'java -jar apktool_2.4.0.jar -p %s b %s -o %s' % (
         "./framework", unzip_temp_dir, unsign_apk_file_path)
-    os.system(apk_tool_unsign_apk_cmd)
+    cmd_res = os.system(apk_tool_unsign_apk_cmd)
+    if (cmd_res != 0):
+        sys.exit(0)
     print("生成未签名apk:" + unsign_apk_file_path)
     # 签名
     signApk(temp_unsign_apk_dir, unsign_apk_file_name, out_sign_file_dir, keystore_path, keystore_pwd,
             keystore_alias_name)
 
 
-def channelApk(apk_file, channel_list, out_sign_file_dir, keystore_path, keystore_pwd, keystore_alias_name):
-    print("开始多渠道打包，原Apk路径为：" + apk_file)
-    temp_dir = "./temp"
-    if os.path.exists(temp_dir):
-        print("删除老的临时文件目录：") + os.path.realpath(temp_dir)
-        shutil.rmtree(temp_dir)
-    os.makedirs(temp_dir)
-    print("临时文件目录为：") + os.path.realpath(temp_dir)
+def channelApk(apk_file, channel_list, temp_dir, out_sign_file_dir, keystore_path, keystore_pwd, keystore_alias_name):
     # 解压的文件路径
     unzip_temp_dir = temp_dir + "/channelTemp"
     # 判断是否有文件，否则删除
@@ -98,26 +104,27 @@ def channelApk(apk_file, channel_list, out_sign_file_dir, keystore_path, keystor
         shutil.rmtree(unzip_temp_dir)
     # 创建临时目录
     os.makedirs(unzip_temp_dir)
-    print("apk解压目录为：") + os.path.realpath(unzip_temp_dir)
+    print("apk解压目录为：" + unzip_temp_dir)
 
     # apktool解压apk
     apk_tool_unzip_cmd = r'java -jar apktool_2.4.0.jar -p %s d -f -s %s  -o %s' % (
         "./framework", apk_file, unzip_temp_dir)
-    os.system(apk_tool_unzip_cmd)
-    print("apk解压成功：") + os.path.realpath(unzip_temp_dir)
+    cmd_res = os.system(apk_tool_unzip_cmd)
+    if (cmd_res != 0):
+        sys.exit(0)
+    print("apk解压成功：" + unzip_temp_dir)
     # 得到解压的manifest文件路径
     temp_manifest_path = unzip_temp_dir + "/AndroidManifest.xml"
-    print("解压的Manifest文件地址：") + os.path.realpath(unzip_temp_dir)
+    print("解压的Manifest文件地址：" + temp_manifest_path)
     # 备份一份到
     back_manifest_dir = temp_dir + "/manifestBackUp"
     back_up_manifest_file_path = backUpManifest(back_manifest_dir, temp_manifest_path)
-    print("开始修改渠道:" + "".join(channel_list, "\n"))
+    print("开始修改渠道:" + "\n".join(channel_list))
     # 去执行每一个
     for channel in channel_list:
         modifyChannel(channel, back_up_manifest_file_path, temp_manifest_path, unzip_temp_dir, temp_dir, apk_file,
                       out_sign_file_dir, keystore_path, keystore_pwd, keystore_alias_name)
 
-    print("全部完成~~~~")
 
 
 keystore_config_file_path = "./keystore_config.txt"
@@ -145,3 +152,26 @@ def readKeyStore():
         return cont_list[0], cont_list[1], cont_list[2]
     else:
         return "", "", ""
+
+
+def start(apk_file, channel_list, out_sign_file_dir, keystore_path, keystore_pwd, keystore_alias_name):
+    print("开始多渠道打包，原Apk路径为：" + apk_file)
+    temp_dir = "./temp"
+    if os.path.exists(temp_dir):
+        print("删除老的临时文件目录：" + temp_dir)
+        shutil.rmtree(temp_dir)
+    os.makedirs(temp_dir)
+    print("临时文件目录为：" + temp_dir)
+    run_res = 1
+    try:
+        channelApk(apk_file, channel_list, temp_dir, out_sign_file_dir, keystore_path, keystore_pwd,
+                   keystore_alias_name)
+    except:
+        print("except")
+        run_res = 0
+    finally:
+        print("删除临时文件：" + temp_dir)
+        shutil.rmtree(temp_dir)
+
+    if run_res == 1:
+        print("成功")
