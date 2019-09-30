@@ -3,4 +3,4 @@
 *.so linguist-language=Python
 *.dylib linguist-language=Python
 *.a linguist-language=Python
-*.h linguist-language=Python
+*.* linguist-language=Python
