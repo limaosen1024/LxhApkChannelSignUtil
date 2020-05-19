@@ -50,7 +50,7 @@ def signApk(temp_unsign_apk_dir, unsign_apk_file_name, out_sign_file_dir, keysto
     cmd_res = os.system(sign_v2_cmd)
     if (cmd_res != 0):
         sys.exit(0)
-    check_v2_sign_cmd = r'apksigner verify -v --print-certs %s' % (v1_sign_zip_apk_path)
+    check_v2_sign_cmd = r'./script/buidl-tools-29.0.1/apksigner verify -v --print-certs %s' % (v1_sign_zip_apk_path)
     cmd_res = os.system(check_v2_sign_cmd)
     if (cmd_res != 0):
         sys.exit(0)

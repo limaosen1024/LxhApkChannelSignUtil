@@ -28,6 +28,13 @@ myWin.title("欢迎使用Apk签名工具")
 # 窗口大小
 myWin.geometry("720x720")
 
+print("环境配置....")
+# cmd_res2 = os.system("export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk1.8.0_212.jdk/Contents/Home/bin")
+# print(cmd_res2)
+print("环境配置成功...")
+
+print(os.system("java -version"))
+
 
 def selectApkPath():
     apk_path_ = askopenfilename()
@@ -90,7 +97,6 @@ def clickSubmit():
     print("channel_list：" + "".join(channel_list))
     if (save_keystore.get() == 1):
         saveKeyStore(keystore_file_path, keystore_pwd, keystore_alias)
-
     start(old_apk_path, channel_list, out_put_dir, keystore_file_path, keystore_pwd, keystore_alias)
 
 
